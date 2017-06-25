@@ -1,0 +1,26 @@
+facility/STM32F4_FWLIB/
+main/Startup_config/
+main/STM32F4_FWLIB/
+facility/Project/JLinkLog.txt
+facility/Project/JLinkSettings.ini
+facility/Project/OBJ/
+main/Project/OBJ/
+facility/Startup_config/
+facility/Project/LIST/
+main/Project/LIST/
+main/Project/JLinkLog.txt
+main/Project/JLinkSettings.ini
+main/Project/LCD.uvopt
+main/Project/RS485.uvgui.Administrator
+main/Project/RS485.uvgui.lenovo
+main/Project/RS485.uvgui.mdd
+main/Project/RS485.uvgui.mddaddADD
+main/Project/RS485.uvopt
+main/Project/RS485_Target 1.dep
+facility/Project/LCD.uvopt
+facility/Project/RS485.uvgui.Administrator
+facility/Project/RS485.uvgui.lenovo
+facility/Project/RS485.uvgui.mdd
+facility/Project/RS485.uvgui.mddaddADD
+facility/Project/RS485.uvopt
+facility/Project/RS485_Target 1.dep
