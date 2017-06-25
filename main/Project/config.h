@@ -74,23 +74,26 @@ u8 auchCRCLo[] = {
 0x40
 } ;
 
-#define USART1_BYTE_COUNT 	8  	  //定义usart1接收端接收长度
+
+#define USART1_BYTE_COUNT		8  	  //定义usart1接收端接收长度
 #define USART_REC_NUM  			200  	//定义最大接收字节数 200
 #define USART_SEND_NUM  		200  	//定义最大接收字节数 200
+
+/*设备相关*/
+u8 receive_str[USART1_BYTE_COUNT];//PLC-HMI接收数组
+u8 use_str[USART1_BYTE_COUNT];    //接收数组临时存储数组
+u8 receive_str2[USART_REC_NUM];   //设备-PLC接收数组（长度200）
+u8 receive_str3[USART_REC_NUM];   //设备-PLC接收数组（长度200）
+u8 Send_buf[USART_SEND_NUM]; 			//发送数据数组（长度200）
 
 /*标志位相关*/
 u8 flag_byte_count=0;             //PLC-HMI接收位数标识位 
 u8 flag2_byte_count=0;            //设备-PLC接收位数标识位
+u8 flag3_byte_count=0;            //设备-PLC接收位数标识位
+u8 uart2_byte_count=8;						//设备对应串口接收端接收长度（USART2、USART3、USART6）
 u8 flag_hmi_send=0;							  //HMI发送指令结束标志位
 u8 flag_finish=0;								  //设备数据传入结束标志位	
-u8 uart2_byte_count=8;						//设备对应串口接收端接收长度（USART2、USART3、USART6）
 u16 flag_add=1;									  //载入设备数据的地址
-
-/*设备相关*/                      
-u8 receive_str[USART1_BYTE_COUNT];//PLC-HMI接收数组
-u8 use_str[USART1_BYTE_COUNT];    //接收数组临时存储数组
-u8 receive_str2[USART_REC_NUM];   //设备-PLC接收数组（长度200）
-u8 Send_buf[USART_SEND_NUM]; 			//发送数据数组（长度200）
 
 /****************************************************/
 /******************** load相关：*********************/
@@ -101,7 +104,7 @@ u8 Send_buf[USART_SEND_NUM]; 			//发送数据数组（长度200）
 /************** load_add: 数据起始地址 **************/
 /************** load_qua: 载入数据个数 **************/
 /****************************************************/
-u8 location = 1;                   //记录当前所在位置
+u8 location = 1;
 u8 load_uart_num[] = {1,1,1,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3};
 u8 load_func_code[] = {1,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3};
 u16 load_add[] = {0,0,0,1,81,1901,1001,1101,1173,1501,1573,2301,1,81,1901,1001,1101,1173,1501,1573,2301};

@@ -16,17 +16,22 @@ int main(void)
 	RS485_Init(9600);		//初始化RS485串口2
 	uart1_init(9600);	    //串口初始化波特率为9600
 	uart3_init(9600);	    //串口初始化波特率为9600
+	uart5_init(9600);	    //串口初始化波特率为9600
 	uart6_init(9600);
  	BRUSH_COLOR=RED;    //设置字体为红色 
 	MODBUS_load(1,1,0,16);
 	while(1)
 	{
-		MODBUS_send();
+	  MODBUS_send();
 		key_scan(0);
-//		MODBUS_load(2,1,16); //发送读取信息（串口号,地址,数据个数）
+////		MODBUS_load(2,1,16); //发送读取信息（串口号,地址,数据个数）
 		if(keyup_data==KEY0_DATA) {
-		  load_next();
+			u8 str[] = {0x73,0x74,0x72,0x3D,0x02,0x03,0x06,0x00,0x24,0x01,0x02,0x01,0x05,0x00,0x11};
+			GPRS_Send(str, 15);
 		}
+//			u5SendChars("123456",6);
+//		  load_next();
+//		}
 	}
 }
 

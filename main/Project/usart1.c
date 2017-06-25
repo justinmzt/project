@@ -200,7 +200,67 @@ void u3SendChars(u8 *str, u16 strlen) {
 } 
 
 //////////////////////////////////////////////////////////////////////////////////
-void uart6_init(u32 bound) {
+void uart5_init(u32 bound){
+
+	GPIO_InitTypeDef GPIO_InitStructure;
+	USART_InitTypeDef USART_InitStructure;
+	NVIC_InitTypeDef NVIC_InitStructure;
+	
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC | RCC_AHB1Periph_GPIOD,ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART5,ENABLE);
+	
+	GPIO_PinAFConfig(GPIOC,GPIO_PinSource12,GPIO_AF_UART5);
+	GPIO_PinAFConfig(GPIOD,GPIO_PinSource2,GPIO_AF_UART5);
+	
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOC,&GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOD,&GPIO_InitStructure);
+	
+	USART_InitStructure.USART_BaudRate = bound;
+	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+	USART_InitStructure.USART_StopBits = USART_StopBits_1;
+	USART_InitStructure.USART_Parity = USART_Parity_No;
+	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+	USART_Init(UART5, &USART_InitStructure);
+	USART_Cmd(UART5, ENABLE);
+	
+	USART_ClearFlag(UART5, USART_FLAG_TC);
+	
+	USART_ITConfig(UART5, USART_IT_RXNE, ENABLE);
+	
+	NVIC_InitStructure.NVIC_IRQChannel = UART5_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=3;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority =3;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+}
+
+void uart5SendChar(u8 ch){
+      
+	while((UART5->SR&0x40)==0);  
+    UART5->DR = (u8) ch;      
+}
+
+void u5SendChars(u8 *str, u16 strlen){
+ 
+	  u16 k= 0 ; 
+   do { uart5SendChar(*(str + k)); k++; }   //循环发送,直到发送完毕   
+    while (k < strlen); 
+} 
+//////////////////////////////////////////////////////////////////////////////////
+void uart6_init(u32 bound){
+
 	GPIO_InitTypeDef GPIO_InitStructure;
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
@@ -238,19 +298,21 @@ void uart6_init(u32 bound) {
 	NVIC_Init(&NVIC_InitStructure);
 }
 
-void uart6SendChar(u8 ch) {  
+void uart6SendChar(u8 ch){
+      
 	while((USART6->SR&0x40)==0);  
     USART6->DR = (u8) ch;      
 }
 
-void u6SendChars(u8 *str, u16 strlen) {
+void u6SendChars(u8 *str, u16 strlen){
 	  u16 k= 0 ; 
    do { uart6SendChar(*(str + k)); k++; }   //循环发送,直到发送完毕   
     while (k < strlen); 
 } 
 
 //////////////////////////////////////////////////////////////////////////////////
-u16 crc16(u8 *puchMsg,u8 usDataLen) { //16位CRC校验函数,查表法
+/*************16位CRC校验函数,查表法***************/
+u16 crc16(u8 *puchMsg,u8 usDataLen) {
   u8 uchCRCHi = 0xFF ; 				
 	u8 uchCRCLo = 0xFF ; 				
 	u16 uIndex ; 							
@@ -261,8 +323,10 @@ u16 crc16(u8 *puchMsg,u8 usDataLen) { //16位CRC校验函数,查表法
 	}
 	return (((u16)(uchCRCLo) << 8) | uchCRCHi) ;
 }
-/***MODBUS协议查询相关***/
-u16 *data_search(n,add) { //Modbus_03 查询函数
+
+
+
+u16 *data_search(n,add) {  //Modbus_03 查询函数
 	if(n==0x01){
 		return &ele[add];
 	}
@@ -283,19 +347,22 @@ u16 *data_search(n,add) { //Modbus_03 查询函数
 		if(add>=2301&&add<=2303) return &ups2[add-2301+518];
 	}
 }
-void MODBUS_01() { //MODBUS_01功能码
-  u16 crc=0;
+void MODBUS_01() {    //MODBUS_01功能码
+  u16 crc=0;	
+  u8 hi=0,low=0;
   u16 length=0;
   u16 num=0;
   u8 i=0;
+	u16 begin_address=0;
+  begin_address=(use_str[2]<<8)+use_str[3];
   crc=crc16(use_str,6);                       //校验
   if(crc==(use_str[7]<<8 | use_str[6]))	  //当校验一致时
   {
-		u8 begin_address = (use_str[2]<<8)+use_str[3];
   	length=(use_str[4]<<8)+use_str[5];
   	num=length/8;
   	if (length%8) num++;
-  	for(i=0;i<num;i++) {
+  	for(i=0;i<num;i++)
+  	{
   		Send_buf[i+3] = ele3[begin_address/8+i];//寻找数据
   	}
   	Send_buf[0]=use_str[0];					  //站号
@@ -307,16 +374,18 @@ void MODBUS_01() { //MODBUS_01功能码
   	u1SendChars(Send_buf,num+5);						  //发送返回屏
   }
 }
-void MODBUS_02() { //MODBUS_02功能码
+void MODBUS_02() {    //MODBUS_02功能码
   u16 crc=0;	
+  u8 hi=0,low=0;
   u16 length=0;
   u16 num=0;
   u8 i=0;
+	u16 begin_address=0;
+  begin_address=(use_str[2]<<8)+use_str[3];
   crc=crc16(use_str,6);                       //校验
   if(crc==(use_str[7]<<8 | use_str[6]))	  //当校验一致时
   {
-  	u8 begin_address=(use_str[2]<<8)+use_str[3];
-		length=(use_str[4]<<8)+use_str[5];
+  	length=(use_str[4]<<8)+use_str[5];
   	num=length/8;
   	if (length%8) num++;
   	for(i=0;i<num;i++)
@@ -332,26 +401,29 @@ void MODBUS_02() { //MODBUS_02功能码
   	u1SendChars(Send_buf,num+5);						  //发送返回屏
   }
 }
-void MODBUS_03() { //MODBUS_03功能码
+void MODBUS_03() {   //MODBUS_03功能码
   u16 legg;//03功能码发送的位的长度
+	u16 receive_length;
   u16 plc;
-	u8 i;
+	u8 hi=0,low=0;
+	u8 time;
+	u16 begin_address=0;
   u16 crc=crc16(use_str,6);					//校验
   if(crc == (use_str[7]<<8|use_str[6]))	//校验一致
   {
-  	u8 begin_address = use_str[2] << 8 | use_str[3];
-  	u8 address_leg = use_str[4] << 8 | use_str[5];	 //总寄存器长度
-  	Send_buf[0] = use_str[0];					//站号
-  	plc = (u16)use_str[0];
-  	Send_buf[1] = use_str[1];					//功能码
-  	legg = (u16)address_leg*2;					//字节数
-  	Send_buf[2] = address_leg*2;;					//字节数
-  	for(i = 0;i < legg;i++)				//发送相应字节
+  	begin_address=use_str[2]<<8|use_str[3];
+  	receive_length=use_str[4]<<8 | use_str[5];	 //总寄存器长度
+  	Send_buf[0]=use_str[0];					//站号
+  	plc=(u16)use_str[0];
+  	Send_buf[1]=use_str[1];					//功能码
+  	legg=(u16)receive_length*2;					//字节数
+  	Send_buf[2]=receive_length*2;;					//字节数
+  	for(time=0;time<legg;time++)				//发送相应字节
   	{
-  		if(!(i % 2))							//字高位为0
-  		Send_buf[i+3] = *(i/2+data_search(plc,begin_address))>>8;		//字高字节右移八位，在得到的地址上加i/2得到后面的数据
+  		if(!(time%2))							//字高位为0
+  		Send_buf[time+3] = *(time/2+data_search(plc,begin_address))>>8;		//字高字节右移八位，在得到的地址上加time/2得到后面的数据
   		else
-  		Send_buf[i+3] = *(i/2+data_search(plc,begin_address))&0x00ff;		//字低字节 与上0x00ff即为低四位
+  		Send_buf[time+3] = *(time/2+data_search(plc,begin_address))&0x00ff;		//字低字节 与上0x00ff即为低四位
   	}
   	crc=crc16(Send_buf,legg+3);				//校验
   	Send_buf[legg+3]=crc%256;				//校验低位
@@ -359,13 +431,8 @@ void MODBUS_03() { //MODBUS_03功能码
   	u1SendChars(Send_buf,legg+5);					//返回屏
   }
 }
-void command(void) { //MODBUS协议程序
-		if(use_str[1] == 0x01) MODBUS_01();					 //01功能码
-		if(use_str[1] == 0x03) MODBUS_03();					 //03功能码
-	  if(use_str[1] == 0x02) MODBUS_02();					 //02功能码
-}
-/***MODBUS协议读入相关***/
-void data_add(n,add,num) {  //赋值函数
+
+void data_add(n,add,num) {  //Modbus_06 赋值函数
   if(n==0x01){
 		ele[add]=num;
 	}
@@ -387,6 +454,29 @@ void data_add(n,add,num) {  //赋值函数
 	}	
 }
 
+void MODBUS_06() {  //MODBUS_06功能码
+	u16 crc=0;    
+	u16 num;
+	u16 begin_address=0;
+	begin_address=use_str[2]<<8|use_str[3]; //写入地址
+			num=use_str[4]<<8|use_str[5];	//寄存器值
+			crc=crc=crc16(use_str,6);					//校验
+			if(crc==(use_str[7]<<8|use_str[6]))	//校验正确
+			{
+				data_add(begin_address,num);			//存入数组，给03功能码调用数值
+				Send_buf[0]=use_str[0];					//站号
+				Send_buf[1]=use_str[1];					//功能码
+				Send_buf[2]=use_str[2];					//开始高位
+				Send_buf[3]=use_str[3];					//开始低位
+				Send_buf[4]=use_str[4];					//字高位
+				Send_buf[5]=use_str[5];					//字低位
+				crc=crc16(Send_buf,6);					//校验
+				Send_buf[6]=crc%256;					//校验低位
+				Send_buf[7]=crc/256;					//校验高位
+				u2SendChars(Send_buf,8);						//返回屏
+			}
+}
+	
 void MODBUS_load(uart_num, func_code, add, q) {  //发送读取请求（站号,地址,数据个数）
 	Send_buf[0]=(u16)uart_num;//站号
 	Send_buf[1]=(u16)func_code;//功能码
@@ -405,22 +495,35 @@ void MODBUS_load(uart_num, func_code, add, q) {  //发送读取请求（站号,�
 	  uart2_byte_count=5+num;
 	}
 	flag_add=add;
+//	u2SendChars(Send_buf,8);
 	switch(uart_num) {
 		case 1:u2SendChars(Send_buf,8);break; 
 		case 2:u3SendChars(Send_buf,8);break; 
 		case 3:u6SendChars(Send_buf,8);break; 
 	}
 }
-void load_next() { //发送下个请求（当载入完毕）
+void load_next() {
 	if (location == 21) {
 		location = 0;
 	}
 	MODBUS_load(load_uart_num[location],load_func_code[location],load_add[location],load_qua[location]);
 	location++;
 }
-
-
-void setData(void){ //载入设备数据
+	
+void test() {
+	u8 i=0;
+	for (i=0;i<3;i++) {
+		ups1[i]++;
+	}
+}
+/*************MODBUS协议程序***************/
+void command(void) { 
+		if(use_str[1] == 0x01) MODBUS_01();					 //01功能码
+		if(use_str[1] == 0x03) MODBUS_03();					 //03功能码
+		if(use_str[1] == 0x06) MODBUS_06();					 //06功能码
+	  if(use_str[1] == 0x02) MODBUS_02();					 //02功能码
+}
+void setData(void){
   u8 a=0,i=0;u16 add=0;
   if(receive_str2[1] == 0x03){
     a = receive_str2[2] / 2;
@@ -444,29 +547,52 @@ void setData(void){ //载入设备数据
     }
   }
 }
+void GPRS_Send(u8 *str, u16 strlen){
+	u8 i;
+	u8 http[] = "POST /api/abc HTTP/1.1\r\nHost:120.25.77.40:80\r\nContent-Type:application/x-www-form-urlencoded\r\nContent-Length:";
+	u8 cr[] = "\r\n\r\n";
+	u16 location;
+	u16 length;
+	if(strlen < 10){
+		location = 110;
+		http[location - 1] = strlen % 10 + '0';
+	}
+	else if(strlen < 100){
+		location = 111;
+		http[location - 2] = strlen / 10 + '0';
+		http[location - 1] = strlen % 10 + '0';
+	}
+	else {
+		location = 112;
+		http[location - 3] = strlen / 100 + '0';
+		http[location - 2] = strlen / 10 + '0';
+		http[location - 1] = strlen % 10 + '0';
+	}
+	strcat(http, cr);
+	length = location + 4 + strlen;
+	for(i = 0;i < strlen;i++){
+	  http[115 + i] = str[i];
+	}
+	u5SendChars(http,length);
+}
 
-/***发送函数，检测标志位***/
 void MODBUS_send(void) {
   if(flag_hmi_send) {
-//		u2SendChars(receive_str,8);
 		command();
 		flag_hmi_send = 0;
 	}
 	if(flag_finish) {
 		setData();
+		//这里加入GPRS发送函数
+		//...
+		receive_str2[uart2_byte_count - 2] = flag_add / 256;//地址高位
+	  receive_str2[uart2_byte_count - 1] = flag_add % 256;//地址低位
+		GPRS_Send(receive_str2, uart2_byte_count);
 		flag_finish = 0;
 		load_next();
 	}
 }
-
-/***改变变量测试***/
-void test() {
-	u8 i=0;
-	for (i=0;i<3;i++) {
-		ups1[i]++;
-	}
-}
-/***串口中断服务程序***/
+//USART1中断服务程序
 void USART1_IRQHandler(void) {
   u8 rec_data;
 	u8 i = 0;
@@ -474,7 +600,7 @@ void USART1_IRQHandler(void) {
     rec_data =(u8)USART_ReceiveData(USART1);         //(USART1->DR) 读取接收到的数据
     receive_str[flag_byte_count]=rec_data;
     flag_byte_count++;
-    if(flag_byte_count == USART1_BYTE_COUNT) {           //到了flag_byte_count位传递数据
+    if(flag_byte_count == USART1_BYTE_COUNT) {           //到了uart2_byte_count位传递数据
 		  for (i = 0;i < 8;i++) {
 			  use_str[i] = receive_str[i];
 		  }
@@ -483,13 +609,14 @@ void USART1_IRQHandler(void) {
 		}
   } 
 } 
+//UART2中断服务函数
 void USART2_IRQHandler(void) {
 	u8 rec_data;
 	if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET) {//接收到数据
 		rec_data =(u8)USART_ReceiveData(USART2);         //(USART2->DR) 读取接收到的数据
 		receive_str2[flag2_byte_count]=rec_data;
 		flag2_byte_count++;  
-		if(flag2_byte_count == uart2_byte_count) {           //到了flag_byte_count位传递数据
+		if(flag2_byte_count == uart2_byte_count) {           //到了uart2_byte_count位传递数据
 			flag2_byte_count = 0; 
 			flag_finish = 1;
 		}
@@ -501,7 +628,7 @@ void USART3_IRQHandler(void) {
 	  rec_data =(u8)USART_ReceiveData(USART3);         //(USART1->DR) 读取接收到的数据
 	  receive_str2[flag2_byte_count] = rec_data;
 	  flag2_byte_count++;
-	  if(flag2_byte_count == uart2_byte_count) {            //到了flag_byte_count位传递数据
+	  if(flag2_byte_count == uart2_byte_count) {            //到了uart2_byte_count位传递数据
 	  	flag2_byte_count = 0; 
 			flag_finish=1;
 	  }
@@ -513,37 +640,12 @@ void USART6_IRQHandler(void) {
     rec_data =(u8)USART_ReceiveData(USART6);         //(USART1->DR) 读取接收到的数据
     receive_str2[flag2_byte_count]=rec_data;
     flag2_byte_count++;  
-    if(flag2_byte_count == uart2_byte_count) {            //到了flag_byte_count位传递数据
+    if(flag2_byte_count == uart2_byte_count) {            //到了uart2_byte_count位传递数据
     	flag2_byte_count = 0; 
 			flag_finish=1;
     }
 	}  					
 } 
-//void UART4_IRQHandler(void)  
-//{
-//	u8 rec_data;
-//	if(USART_GetITStatus(UART4, USART_IT_RXNE) != RESET)  //接收中断 
-//		{
-//				rec_data =(u8)USART_ReceiveData(UART4);         //(USART1->DR) 读取接收到的数据
-//        if(rec_data=='S')		  	                         //如果是S，表示是命令信息的起始位
-//				{
-//					flag_byte_count=0x01; 
-//				}
+void UART5_IRQHandler(void) {			
+} 
 
-//			else if(rec_data=='E')		                         //如果E，表示是命令信息传送的结束位
-//				{
-//					if(strcmp("Light_led1",(char *)receive_str)==0)        LED1=0;	//点亮LED1
-//					else if(strcmp("Close_led1",(char *)receive_str)==0)   LED1=1;	//关灭LED1
-//					else if(strcmp("Open_beep",(char *)receive_str)==0)    BEEP=1; 	//蜂鸣器响
-//					else if(strcmp("Close_beep",(char *)receive_str)==0)   BEEP=0; 	//蜂鸣器不响
-//					
-//					for(flag_byte_count=0;flag_byte_count<32;flag_byte_count++)receive_str[flag_byte_count]=0x00;
-//					flag_byte_count=0;    
-//				}				  
-//			else if((flag_byte_count>0)&&(flag_byte_count<=USART_REC_NUM))
-//				{
-//				   receive_str[flag_byte_count-1]=rec_data;
-//				   flag_byte_count++;
-//				}                		 
-//   } 
-//} 
