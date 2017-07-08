@@ -1,6 +1,4 @@
 facility/STM32F4_FWLIB/
-main/Startup_config/
-main/STM32F4_FWLIB/
 facility/Project/JLinkLog.txt
 facility/Project/JLinkSettings.ini
 facility/Project/OBJ/
