@@ -79,6 +79,7 @@ u8 auchCRCLo[] = {
 #define UART5_BYTE_COUNT		8  	  //定义uart5接收端接收长度
 #define USART_REC_NUM  			200  	//定义最大接收字节数 200
 #define USART_SEND_NUM  		200  	//定义最大接收字节数 200
+#define LOAD_LENGTH      		21  	//定义Load队列长度
 
 /*设备相关*/
 u8 receive_str[USART1_BYTE_COUNT] = {0};//PLC-HMI接收数组

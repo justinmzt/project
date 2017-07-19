@@ -503,7 +503,7 @@ void MODBUS_load(uart_num, func_code, add, q) {  //发送读取请求（站号,�
 	}
 }
 void load_next() {
-	if (location == 21) {
+	if (location == LOAD_LENGTH) {
 		location = 0;
 	}
 	MODBUS_load(load_uart_num[location],load_func_code[location],load_add[location],load_qua[location]);
@@ -578,7 +578,7 @@ void GPRS_Send(u8 *str, u16 strlen){
 void gprs_queue_load() {
 		// 这里生成GPRS发送队列
 		if(gprs_queue_ready == 0){
-			if(gprs_queue_location < 21){
+			if(gprs_queue_location < LOAD_LENGTH){
 		    receive_str2[uart2_byte_count - 2] = flag_add / 256;//地址高位
 	      receive_str2[uart2_byte_count - 1] = flag_add % 256;//地址低位
 		    memcpy(gprs_queue[location - 1], receive_str2, sizeof(receive_str2));
@@ -606,7 +606,7 @@ void MODBUS_send(void) {
 		load_next();
 	}
 	if(flag_gprs && gprs_queue_ready) {
-		if(gprs_location < 21){
+		if(gprs_location < LOAD_LENGTH){
 		  delay_ms(20);		
 		  GPRS_Send(gprs_str_test, 15);
 		  gprs_location++;
