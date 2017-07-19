@@ -575,32 +575,59 @@ void GPRS_Send(u8 *str, u16 strlen){
 	}
 	u5SendChars(http,length);
 }
-
+void gprs_queue_load() {
+		// 这里生成GPRS发送队列
+		if(gprs_queue_ready == 0){
+			if(gprs_queue_location < 21){
+		    receive_str2[uart2_byte_count - 2] = flag_add / 256;//地址高位
+	      receive_str2[uart2_byte_count - 1] = flag_add % 256;//地址低位
+		    memcpy(gprs_queue[location - 1], receive_str2, sizeof(receive_str2));
+		    gprs_count[location - 1] = uart2_byte_count;
+			  gprs_queue_location++;				
+			} else {
+				gprs_queue_ready = 1;
+				gprs_queue_location = 0;
+			}
+		}
+}
 void MODBUS_send(void) {
   if(flag_hmi_send) {
 		command();
 		flag_hmi_send = 0;
 	}
+	if(flag_scada_send) {
+		//加入scada的处理函数
+		flag_scada_send = 0;
+	}
 	if(flag_finish) {
 		setData();
-		//这里加入GPRS发送函数
-		//...
-		receive_str2[uart2_byte_count - 2] = flag_add / 256;//地址高位
-	  receive_str2[uart2_byte_count - 1] = flag_add % 256;//地址低位
-		GPRS_Send(receive_str2, uart2_byte_count);
+		gprs_queue_load();
 		flag_finish = 0;
 		load_next();
+	}
+	if(flag_gprs && gprs_queue_ready) {
+		if(gprs_location < 21){
+		  delay_ms(20);		
+		  GPRS_Send(gprs_str_test, 15);
+		  gprs_location++;
+		  flag_gprs = 0;		
+		} else {
+			gprs_queue_ready = 0;
+		}
 	}
 }
 //USART1中断服务程序
 void USART1_IRQHandler(void) {
   u8 rec_data;
 	u8 i = 0;
-  if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET) {  //接收中断 
-    rec_data =(u8)USART_ReceiveData(USART1);         //(USART1->DR) 读取接收到的数据
+  if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET) {
+		// 接收中断 
+		// (USART1->DR) 读取接收到的数据
+    rec_data =(u8)USART_ReceiveData(USART1);
     receive_str[flag_byte_count]=rec_data;
     flag_byte_count++;
-    if(flag_byte_count == USART1_BYTE_COUNT) {           //到了uart2_byte_count位传递数据
+    if(flag_byte_count == USART1_BYTE_COUNT) {
+			// 到了uart2_byte_count位传递数据
 		  for (i = 0;i < 8;i++) {
 			  use_str[i] = receive_str[i];
 		  }
@@ -612,11 +639,11 @@ void USART1_IRQHandler(void) {
 //UART2中断服务函数
 void USART2_IRQHandler(void) {
 	u8 rec_data;
-	if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET) {//接收到数据
-		rec_data =(u8)USART_ReceiveData(USART2);         //(USART2->DR) 读取接收到的数据
+	if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET) {
+		rec_data =(u8)USART_ReceiveData(USART2);
 		receive_str2[flag2_byte_count]=rec_data;
 		flag2_byte_count++;  
-		if(flag2_byte_count == uart2_byte_count) {           //到了uart2_byte_count位传递数据
+		if(flag2_byte_count == uart2_byte_count) {
 			flag2_byte_count = 0; 
 			flag_finish = 1;
 		}
@@ -624,11 +651,11 @@ void USART2_IRQHandler(void) {
 } 
 void USART3_IRQHandler(void) {
 	u8 rec_data;
-	if(USART_GetITStatus(USART3, USART_IT_RXNE) != RESET) {  //接收中断 
-	  rec_data =(u8)USART_ReceiveData(USART3);         //(USART1->DR) 读取接收到的数据
+	if(USART_GetITStatus(USART3, USART_IT_RXNE) != RESET) {
+	  rec_data =(u8)USART_ReceiveData(USART3);
 	  receive_str2[flag2_byte_count] = rec_data;
 	  flag2_byte_count++;
-	  if(flag2_byte_count == uart2_byte_count) {            //到了uart2_byte_count位传递数据
+	  if(flag2_byte_count == uart2_byte_count) {
 	  	flag2_byte_count = 0; 
 			flag_finish=1;
 	  }
@@ -636,16 +663,27 @@ void USART3_IRQHandler(void) {
 } 
 void USART6_IRQHandler(void) {
 	u8 rec_data;
-	if(USART_GetITStatus(USART6, USART_IT_RXNE) != RESET) {  //接收中断 
-    rec_data =(u8)USART_ReceiveData(USART6);         //(USART1->DR) 读取接收到的数据
+	if(USART_GetITStatus(USART6, USART_IT_RXNE) != RESET) {
+    rec_data =(u8)USART_ReceiveData(USART6);
     receive_str2[flag2_byte_count]=rec_data;
     flag2_byte_count++;  
-    if(flag2_byte_count == uart2_byte_count) {            //到了uart2_byte_count位传递数据
+    if(flag2_byte_count == uart2_byte_count) {
     	flag2_byte_count = 0; 
 			flag_finish=1;
     }
 	}  					
 } 
 void UART5_IRQHandler(void) {			
+	u8 rec_data;
+	u8 i = 0;
+  if(USART_GetITStatus(UART5, USART_IT_RXNE) != RESET) {
+    rec_data =(u8)USART_ReceiveData(UART5);
+    receive_gprs[gprs_byte_count]=rec_data;
+    gprs_byte_count++;
+    if(gprs_byte_count == UART5_BYTE_COUNT) {
+			gprs_byte_count = 0;
+			flag_gprs=1;
+		}
+  }
 } 
 

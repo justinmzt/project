@@ -76,22 +76,28 @@ u8 auchCRCLo[] = {
 
 
 #define USART1_BYTE_COUNT		8  	  //定义usart1接收端接收长度
+#define UART5_BYTE_COUNT		8  	  //定义uart5接收端接收长度
 #define USART_REC_NUM  			200  	//定义最大接收字节数 200
 #define USART_SEND_NUM  		200  	//定义最大接收字节数 200
 
 /*设备相关*/
-u8 receive_str[USART1_BYTE_COUNT];//PLC-HMI接收数组
-u8 use_str[USART1_BYTE_COUNT];    //接收数组临时存储数组
-u8 receive_str2[USART_REC_NUM];   //设备-PLC接收数组（长度200）
-u8 receive_str3[USART_REC_NUM];   //设备-PLC接收数组（长度200）
-u8 Send_buf[USART_SEND_NUM]; 			//发送数据数组（长度200）
+u8 receive_str[USART1_BYTE_COUNT] = {0};//PLC-HMI接收数组
+u8 use_str[USART1_BYTE_COUNT] = {0};    //接收数组临时存储数组
+u8 receive_str2[USART_REC_NUM] = {0};   //设备-PLC接收数组（长度200）
+//u8 receive_str3[UART5_BYTE_COUNT] = {0};//设备-SCADA接收数组
+u8 receive_gprs[UART5_BYTE_COUNT] = {0};//设备-gprs接收数组
+u8 Send_buf[USART_SEND_NUM] = {0}; 			//发送数据数组（长度200）
 
 /*标志位相关*/
 u8 flag_byte_count=0;             //PLC-HMI接收位数标识位 
 u8 flag2_byte_count=0;            //设备-PLC接收位数标识位
-u8 flag3_byte_count=0;            //设备-PLC接收位数标识位
+//u8 flag3_byte_count=0;            //PLC-SCADA接收位数标识位
+u8 gprs_byte_count=0;             //PLC-GPRS接收位数标识位
 u8 uart2_byte_count=8;						//设备对应串口接收端接收长度（USART2、USART3、USART6）
 u8 flag_hmi_send=0;							  //HMI发送指令结束标志位
+u8 flag_scada_send=0;							//SCADA发送指令结束标志位
+u8 flag_gprs=0;							      //gprs标志位
+u8 gprs_queue_ready=0;            //gprs发送队列载入完成标志位
 u8 flag_finish=0;								  //设备数据传入结束标志位	
 u16 flag_add=1;									  //载入设备数据的地址
 
@@ -109,4 +115,11 @@ u8 load_uart_num[] = {1,1,1,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3};
 u8 load_func_code[] = {1,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3};
 u16 load_add[] = {0,0,0,1,81,1901,1001,1101,1173,1501,1573,2301,1,81,1901,1001,1101,1173,1501,1573,2301};
 u8 load_qua[] = {16,40,78,55,32,84,34,72,72,72,72,3,55,32,84,34,72,72,72,72,3};
+
+u8 gprs_queue[21][USART_REC_NUM] = {0};
+u8 gprs_count[21] = {0};
+u8 gprs_location = 0;
+u8 gprs_queue_location = 0;
+
+u8 gprs_str_test[] = {0x73,0x74,0x72,0x3D,0x02,0x03,0x06,0x00,0x24,0x01,0x02,0x01,0x05,0x00,0x11};
 #endif
