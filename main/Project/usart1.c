@@ -495,7 +495,7 @@ void MODBUS_load(uart_num, func_code, add, q) {  //发送读取请求（站号,�
 	  uart2_byte_count=5+num;
 	}
 	flag_add=add;
-//	u2SendChars(Send_buf,8);
+	delay_ms(20);
 	switch(uart_num) {
 		case 1:u2SendChars(Send_buf,8);break; 
 		case 2:u3SendChars(Send_buf,8);break; 
@@ -573,6 +573,7 @@ void GPRS_Send(u8 *str, u16 strlen){
 	for(i = 0;i < strlen;i++){
 	  http[115 + i] = str[i];
 	}
+	delay_ms(30);
 	u5SendChars(http,length);
 }
 void gprs_queue_load() {
@@ -605,16 +606,20 @@ void MODBUS_send(void) {
 		flag_finish = 0;
 		load_next();
 	}
-	if(flag_gprs && gprs_queue_ready) {
-		if(gprs_location < LOAD_LENGTH){
-		  delay_ms(20);		
-		  GPRS_Send(gprs_str_test, 15);
-		  gprs_location++;
-		  flag_gprs = 0;		
-		} else {
-			gprs_queue_ready = 0;
-		}
+	//测试gprs连续性
+	if(flag_gprs) {
+	  GPRS_Send(gprs_str_test, 15);
+		flag_gprs = 0;
 	}
+//	if(flag_gprs && gprs_queue_ready) {
+//		if(gprs_location < LOAD_LENGTH){	
+//		  GPRS_Send(gprs_str_test, 15);
+//		  gprs_location++;
+//		  flag_gprs = 0;		
+//		} else {
+//			gprs_queue_ready = 0;
+//		}
+//	}
 }
 //USART1中断服务程序
 void USART1_IRQHandler(void) {
