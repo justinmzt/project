@@ -1,13 +1,9 @@
 facility/STM32F4_FWLIB/
-facility/Project/JLinkLog.txt
-facility/Project/JLinkSettings.ini
 facility/Project/OBJ/
 main/Project/OBJ/
 facility/Startup_config/
 facility/Project/LIST/
 main/Project/LIST/
-main/Project/JLinkLog.txt
-main/Project/JLinkSettings.ini
 main/Project/LCD.uvopt
 main/Project/RS485.uvgui.Administrator
 main/Project/RS485.uvgui.lenovo
