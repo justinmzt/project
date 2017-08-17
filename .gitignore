@@ -23,3 +23,11 @@ facility/Project/RS485_Target 1.dep
 main/.idea/
 main/Startup_config/
 main/Project/JLinkSettings.ini
+main/Project/RS485.uvgui_Administrator.bak
+main/Project/RS485_uvopt.bak
+main/Project/RS485_uvproj.bak
+main/Project/RS485.uvgui_mddaddADD.bak
+main/Project/RS485.uvgui_mdd.bak
+main/Project/RS485.uvgui_lenovo.bak
+main/Project/RS485.uvproj
+
