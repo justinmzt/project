@@ -88,14 +88,14 @@ u8 auchCRCLo[] = {
 u8 receive_str[USART1_BYTE_COUNT] = {0};   //PLC-HMI接收数组
 u8 use_str[USART1_BYTE_COUNT] = {0};       //接收数组临时存储数组
 u8 receive_str2[USART_REC_NUM] = {0};      //设备-PLC接收数组（长度200）
-//u8 receive_str3[UART5_BYTE_COUNT] = {0}; //设备-SCADA接收数组
+u8 receive_scada[UART5_BYTE_COUNT] = {0}; //设备-SCADA接收数组
 u8 receive_gprs[UART5_BYTE_COUNT] = {0};   //设备-gprs接收数组
 u8 Send_buf[USART_SEND_NUM] = {0};         //发送数据数组（长度200）
 
 /*标志位相关*/
 u8 flag_byte_count = 0;                    //PLC-HMI接收位数标识位
 u8 flag2_byte_count = 0;                   //设备-PLC接收位数标识位
-//u8 flag3_byte_count=0;                   //PLC-SCADA接收位数标识位
+u8 scada_byte_count=0;                   //PLC-SCADA接收位数标识位
 u8 gprs_byte_count = 0;                    //PLC-GPRS接收位数标识位
 u8 uart2_byte_count = 8;                   //设备对应串口接收端接收长度（USART2、USART3、USART6）
 u8 flag_hmi_send = 0;                      //HMI发送指令结束标志位

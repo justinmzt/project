@@ -355,7 +355,7 @@ u16 *data_search(n, add) {  //Modbus_03 查询函数
         if (add >= 1901 && add <= 1984) return &ups1[add - 1901 + 434];
         if (add >= 2301 && add <= 2303) return &ups1[add - 2301 + 518];
     } else if (n == 0x03) {
-        if (add <= 112) return &ups1[add];
+        if (add <= 112) return &ups2[add];
         if (add >= 1001 && add <= 1033) return &ups2[add - 1001 + 113];
         if (add >= 1101 && add <= 1244) return &ups2[add - 1101 + 146];
         if (add >= 1501 && add <= 1644) return &ups2[add - 1501 + 290];
@@ -363,7 +363,25 @@ u16 *data_search(n, add) {  //Modbus_03 查询函数
         if (add >= 2301 && add <= 2303) return &ups2[add - 2301 + 518];
     }
 }
-
+u16 *data_search_scada(n, add) {  //Modbus_03 查询函数
+    if (n == 0x01) {
+        if(add >= 3200 && add <= 3271) return &ele[add - 3200];
+    } else if (n == 0x02) {
+        if (add >= 3278 && add <= 3332) return &ups1[add - 3277];
+        if (add >= 3335 && add <= 3342) return &ups1[add - 3335 + 113];
+        if (add >= 3343 && add <= 3486) return &ups1[add - 3343 + 146];
+        if (add >= 3487 && add <= 3630) return &ups1[add - 3487 + 290];
+        if (add == 3984) return &ups1[81];
+        if (add == 3985) return &ups1[82];
+    } else if (n == 0x03) {
+        if (add >= 3631 && add <= 3685) return &ups2[add - 3630];
+        if (add >= 3688 && add <= 3695) return &ups2[add - 3688 + 113];
+        if (add >= 3696 && add <= 3839) return &ups2[add - 3696 + 146];
+        if (add >= 3840 && add <= 3983) return &ups2[add - 3840 + 290];
+        if (add == 3987) return &ups2[81];
+        if (add == 3988) return &ups2[82];
+    }
+}
 void MODBUS_01() {    //MODBUS_01功能码
     u16 crc = 0;
     u8 hi = 0, low = 0;
@@ -390,7 +408,6 @@ void MODBUS_01() {    //MODBUS_01功能码
         u1SendChars(Send_buf, num + 5);                          //发送返回屏
     }
 }
-
 void MODBUS_02() {    //MODBUS_02功能码
     u16 crc = 0;
     u8 hi = 0, low = 0;
@@ -417,7 +434,6 @@ void MODBUS_02() {    //MODBUS_02功能码
         u1SendChars(Send_buf, num + 5);                          //发送返回屏
     }
 }
-
 void MODBUS_03() {   //MODBUS_03功能码
     u16 legg;//03功能码发送的位的长度
     u16 receive_length;
@@ -447,6 +463,31 @@ void MODBUS_03() {   //MODBUS_03功能码
         Send_buf[legg + 3] = crc % 256;                //校验低位
         Send_buf[legg + 4] = crc / 256;                //校验高位
         u1SendChars(Send_buf, legg + 5);                    //返回屏
+    }
+}
+
+void MODBUS_03_scada() {
+    u16 legg, plc, receive_length, begin_address;
+    u8 hi = 0, low = 0, i;
+    u16 crc = crc16(receive_scada, 6);
+    if (crc == (receive_scada[7] << 8 | receive_scada[6])){
+        begin_address = receive_scada[2] << 8 | receive_scada[3];
+        receive_length = receive_scada[4] << 8 | receive_scada[5];
+        plc = (u16) receive_scada[0];
+        legg = (u16) receive_length * 2;
+        Send_buf[0] = receive_scada[0];
+        Send_buf[1] = receive_scada[1];
+        Send_buf[2] = receive_length * 2;
+        while(i < legg) {
+            u16 data = *(data_search_scada(plc, begin_address + i / 2));
+            Send_buf[i + 3] = data >> 8;
+            Send_buf[i + 4] = data & 0x00ff;
+            i = i + 2;
+        }
+        crc = crc16(Send_buf, legg + 3);
+        Send_buf[legg + 3] = crc % 256;
+        Send_buf[legg + 4] = crc / 256;
+        u1SendChars(Send_buf, legg + 5);
     }
 }
 
@@ -547,6 +588,11 @@ void command(void) {
     if (use_str[1] == 0x06) MODBUS_06();                     //06功能码
     if (use_str[1] == 0x02) MODBUS_02();                     //02功能码
 }
+void command_scada(void) {
+    if (receive_scada[1] == 0x01) MODBUS_01_scada();                     //01功能码
+    if (receive_scada[1] == 0x03) MODBUS_03_scada();                     //03功能码
+    if (receive_scada[1] == 0x02) MODBUS_02_scada();                     //02功能码
+}
 
 void setData(void) {
     u8 a = 0, i = 0;
@@ -625,6 +671,7 @@ void MODBUS_send(void) {
     }
     if (flag_scada_send) {
         //加入scada的处理函数
+        command_scada();
         flag_scada_send = 0;
     }
     if (flag_finish) {
@@ -718,12 +765,19 @@ void UART5_IRQHandler(void) {
     u8 i = 0;
     if (USART_GetITStatus(UART5, USART_IT_RXNE) != RESET) {
         rec_data = (u8) USART_ReceiveData(UART5);
-        receive_gprs[gprs_byte_count] = rec_data;
-        gprs_byte_count++;
-        if (gprs_byte_count == UART5_BYTE_COUNT) {
-            gprs_byte_count = 0;
-            flag_gprs = 1;
+        receive_scada[scada_byte_count] = rec_data;
+        scada_byte_count++;
+        if (scada_byte_count == UART5_BYTE_COUNT) {
+            scada_byte_count = 0;
+            flag_scada_send = 1;
         }
+        //gprs
+//        receive_gprs[gprs_byte_count] = rec_data;
+//        gprs_byte_count++;
+//        if (gprs_byte_count == UART5_BYTE_COUNT) {
+//            gprs_byte_count = 0;
+//            flag_gprs = 1;
+//        }
     }
 }
 //定时器中断服务函数
