@@ -12,9 +12,13 @@ main/Project/RS485.uvgui.mddaddADD
 main/Project/RS485.uvopt
 main/Project/RS485_Target 1.dep
 facility/Project/LCD.uvopt
+main/Project/RS485.uvproj
+main/Project/JLinkLog.txt
 facility/Project/RS485.uvgui.Administrator
 facility/Project/RS485.uvgui.lenovo
 facility/Project/RS485.uvgui.mdd
 facility/Project/RS485.uvgui.mddaddADD
 facility/Project/RS485.uvopt
 facility/Project/RS485_Target 1.dep
+main/.idea/
+main/Startup_config/
