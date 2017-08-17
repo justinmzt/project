@@ -22,3 +22,4 @@ facility/Project/RS485.uvopt
 facility/Project/RS485_Target 1.dep
 main/.idea/
 main/Startup_config/
+main/Project/JLinkSettings.ini
