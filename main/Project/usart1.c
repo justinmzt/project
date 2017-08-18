@@ -346,9 +346,11 @@ u16 crc16(u8 *puchMsg, u8 usDataLen) {
 
 u16 *data_search(n, add) {  //Modbus_03 查询函数
     if (n == 0x01) {
-        return &ele[add];
+        if(add <= 77) return &ele[add];
+        if(add == 78) return &err_1;
     } else if (n == 0x02) {
         if (add <= 112) return &ups1[add];
+        if (add == 113) return &err_2;
         if (add >= 1001 && add <= 1033) return &ups1[add - 1001 + 113];
         if (add >= 1101 && add <= 1244) return &ups1[add - 1101 + 146];
         if (add >= 1501 && add <= 1644) return &ups1[add - 1501 + 290];
@@ -356,6 +358,7 @@ u16 *data_search(n, add) {  //Modbus_03 查询函数
         if (add >= 2301 && add <= 2303) return &ups1[add - 2301 + 518];
     } else if (n == 0x03) {
         if (add <= 112) return &ups2[add];
+        if (add == 113) return &err_3;
         if (add >= 1001 && add <= 1033) return &ups2[add - 1001 + 113];
         if (add >= 1101 && add <= 1244) return &ups2[add - 1101 + 146];
         if (add >= 1501 && add <= 1644) return &ups2[add - 1501 + 290];
@@ -439,7 +442,7 @@ void MODBUS_03() {   //MODBUS_03功能码
     u16 receive_length;
     u16 plc;
     u8 hi = 0, low = 0;
-    u8 time;
+    u8 time = 0;
     u16 begin_address = 0;
     u16 crc = crc16(use_str, 6);                    //校验
     if (crc == (use_str[7] << 8 | use_str[6]))    //校验一致
@@ -451,14 +454,20 @@ void MODBUS_03() {   //MODBUS_03功能码
         Send_buf[1] = use_str[1];                    //功能码
         legg = (u16) receive_length * 2;                    //字节数
         Send_buf[2] = receive_length * 2;;                    //字节数
-        for (time = 0; time < legg; time++)                //发送相应字节
-        {
-            if (!(time % 2))                            //字高位为0
-                Send_buf[time + 3] =
-                        *(time / 2 + data_search(plc, begin_address)) >> 8;        //字高字节右移八位，在得到的地址上加time/2得到后面的数据
-            else
-                Send_buf[time + 3] = *(time / 2 + data_search(plc, begin_address)) & 0x00ff;        //字低字节 与上0x00ff即为低四位
+        while(time < legg) {
+            u16 data = *(data_search(plc, begin_address + time / 2));
+            Send_buf[time + 3] = data >> 8;
+            Send_buf[time + 4] = data & 0x00ff;
+            time = time + 2;
         }
+//        for (time = 0; time < legg; time++)                //发送相应字节
+//        {
+//            if (!(time % 2))                            //字高位为0
+//                Send_buf[time + 3] =
+//                        *(time / 2 + data_search(plc, begin_address)) >> 8;        //字高字节右移八位，在得到的地址上加time/2得到后面的数据
+//            else
+//                Send_buf[time + 3] = *(time / 2 + data_search(plc, begin_address)) & 0x00ff;        //字低字节 与上0x00ff即为低四位
+//        }
         crc = crc16(Send_buf, legg + 3);                //校验
         Send_buf[legg + 3] = crc % 256;                //校验低位
         Send_buf[legg + 4] = crc / 256;                //校验高位
@@ -555,23 +564,31 @@ void MODBUS_load(uart_num, func_code, add, q) {  //发送读取请求（站号,�
     delay_ms(20);
     switch (uart_num) {
         case 1:
+            timing_1 = 500;
             u2SendChars(Send_buf, 8);
             break;
         case 2:
+            timing_2 = 500;
             u3SendChars(Send_buf, 8);
             break;
         case 3:
+            timing_3 = 500;
             u6SendChars(Send_buf, 8);
             break;
     }
 }
 
 void load_next() {
+    u8 num;
     if (location == LOAD_LENGTH) {
         location = 0;
     }
-    MODBUS_load(load_uart_num[location], load_func_code[location], load_add[location], load_qua[location]);
-    location++;
+    num = load_uart_num[location];
+
+    if (!((err_1 && num == 1) || (err_2 && num == 2) || (err_3 && num == 3))) {
+        MODBUS_load(num, load_func_code[location], load_add[location], load_qua[location]);
+        location++;
+    }
 }
 
 void test() {
@@ -588,10 +605,11 @@ void command(void) {
     if (use_str[1] == 0x06) MODBUS_06();                     //06功能码
     if (use_str[1] == 0x02) MODBUS_02();                     //02功能码
 }
+//todo scada: modbus_02
 void command_scada(void) {
-    if (receive_scada[1] == 0x01) MODBUS_01_scada();                     //01功能码
+//    if (receive_scada[1] == 0x01) MODBUS_01_scada();                     //01功能码
     if (receive_scada[1] == 0x03) MODBUS_03_scada();                     //03功能码
-    if (receive_scada[1] == 0x02) MODBUS_02_scada();                     //02功能码
+//    if (receive_scada[1] == 0x02) MODBUS_02_scada();                     //02功能码
 }
 
 void setData(void) {
@@ -623,26 +641,27 @@ void setData(void) {
 void GPRS_Send(u8 *str, u16 strlen) {
     u8 i;
     u8 http[] = "POST /api/abc HTTP/1.1\r\nHost:120.25.77.40:80\r\nContent-Type:application/x-www-form-urlencoded\r\nContent-Length:";
-    u8 cr[] = "\r\n\r\n";
+    u8 cr[] = "\r\n\r\nstr=";
     u16 location;
     u16 length;
-    if (strlen < 10) {
+    u16 body_length = strlen + 4;
+    if (body_length < 10) {
         location = 110;
-        http[location - 1] = strlen % 10 + '0';
-    } else if (strlen < 100) {
+        http[location - 1] = body_length % 10 + '0';
+    } else if (body_length < 100) {
         location = 111;
-        http[location - 2] = strlen / 10 + '0';
-        http[location - 1] = strlen % 10 + '0';
+        http[location - 2] = body_length / 10 + '0';
+        http[location - 1] = body_length % 10 + '0';
     } else {
         location = 112;
-        http[location - 3] = strlen / 100 + '0';
-        http[location - 2] = strlen / 10 + '0';
-        http[location - 1] = strlen % 10 + '0';
+        http[location - 3] = body_length / 100 + '0';
+        http[location - 2] = body_length / 10 + '0';
+        http[location - 1] = body_length % 10 + '0';
     }
     strcat(http, cr);
-    length = location + 4 + strlen;
+    length = location + 8 + strlen;
     for (i = 0; i < strlen; i++) {
-        http[115 + i] = str[i];
+        http[location + 8 + i] = str[i];
     }
     delay_ms(30);
     u5SendChars(http, length);
@@ -658,8 +677,9 @@ void gprs_queue_load() {
             gprs_count[location - 1] = uart2_byte_count;
             gprs_queue_location++;
         } else {
-            gprs_queue_ready = 1;
+            LED2 = !LED2;
             gprs_queue_location = 0;
+            gprs_queue_ready = 1;
         }
     }
 }
@@ -669,34 +689,47 @@ void MODBUS_send(void) {
         command();
         flag_hmi_send = 0;
     }
-    if (flag_scada_send) {
-        //加入scada的处理函数
-        command_scada();
-        flag_scada_send = 0;
+//    if (flag_scada_send) {
+//        //加入scada的处理函数
+//        command_scada();
+//        flag_scada_send = 0;
+//    }
+    if(flag_gprs && gprs_queue_ready) {
+        if (gprs_location < LOAD_LENGTH) {
+            GPRS_Send(gprs_queue[gprs_location], gprs_count[gprs_location]);
+            gprs_location++;
+            flag_gprs = 0;
+        } else {
+            LED2 = !LED2;
+            gprs_location = 0;
+            gprs_queue_ready = 0;
+        }
     }
+    //测试gprs连续性
+//    if (flag_gprs) {
+//        GPRS_Send(gprs_str_test, 15);
+//        flag_gprs = 0;
+//    }
     if (flag_finish) {
         setData();
         gprs_queue_load();
         flag_finish = 0;
         load_next();
     }
-    if (err_1 || err_2 || err_3) {
+    if(err_1 && load_uart_num[location] == 1) {
+        location = 3;
         load_next();
     }
-    //测试gprs连续性
-    if (flag_gprs) {
-        GPRS_Send(gprs_str_test, 15);
-        flag_gprs = 0;
+    if(err_2 && load_uart_num[location] == 2) {
+        location = 12;
+        load_next();
     }
-//	if(flag_gprs && gprs_queue_ready) {
-//		if(gprs_location < LOAD_LENGTH){	
-//		  GPRS_Send(gprs_str_test, 15);
-//		  gprs_location++;
-//		  flag_gprs = 0;		
-//		} else {
-//			gprs_queue_ready = 0;
-//		}
-//	}
+    if(err_3 && load_uart_num[location] == 3) {
+        location = 0;
+        load_next();
+    }
+
+
 }
 
 //USART1中断服务程序
@@ -728,6 +761,7 @@ void USART2_IRQHandler(void) {
         receive_str2[flag2_byte_count] = rec_data;
         flag2_byte_count++;
         if (flag2_byte_count == uart2_byte_count) {
+            timing_1 = 0;
             flag2_byte_count = 0;
             flag_finish = 1;
         }
@@ -741,6 +775,7 @@ void USART3_IRQHandler(void) {
         receive_str2[flag2_byte_count] = rec_data;
         flag2_byte_count++;
         if (flag2_byte_count == uart2_byte_count) {
+            timing_2 = 0;
             flag2_byte_count = 0;
             flag_finish = 1;
         }
@@ -754,6 +789,7 @@ void USART6_IRQHandler(void) {
         receive_str2[flag2_byte_count] = rec_data;
         flag2_byte_count++;
         if (flag2_byte_count == uart2_byte_count) {
+            timing_3 = 0;
             flag2_byte_count = 0;
             flag_finish = 1;
         }
@@ -762,34 +798,57 @@ void USART6_IRQHandler(void) {
 
 void UART5_IRQHandler(void) {
     u8 rec_data;
-    u8 i = 0;
     if (USART_GetITStatus(UART5, USART_IT_RXNE) != RESET) {
         rec_data = (u8) USART_ReceiveData(UART5);
-        receive_scada[scada_byte_count] = rec_data;
-        scada_byte_count++;
-        if (scada_byte_count == UART5_BYTE_COUNT) {
-            scada_byte_count = 0;
-            flag_scada_send = 1;
-        }
-        //gprs
-//        receive_gprs[gprs_byte_count] = rec_data;
-//        gprs_byte_count++;
-//        if (gprs_byte_count == UART5_BYTE_COUNT) {
-//            gprs_byte_count = 0;
-//            flag_gprs = 1;
+//        receive_scada[scada_byte_count] = rec_data;
+//        scada_byte_count++;
+//        if (scada_byte_count == UART5_BYTE_COUNT) {
+//            scada_byte_count = 0;
+//            flag_scada_send = 1;
 //        }
+        //gprs
+        if(!flag_gprs) {
+            receive_gprs[0] = rec_data;
+            gprs_byte_count++;
+            u5Timeout = 5;
+        }
     }
 }
 //定时器中断服务函数
 void TIM2_IRQHandler(void) {
     //溢出中断
     if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET) {
-        if (timing_1 > 10) err_1 = true;
-        else timing_1++;
-        if (timing_2 > 10) err_2 = true;
-        else timing_2++;
-        if (timing_3 > 10) err_3 = true;
-        else timing_3++;
+        if (timing_1 > 0) {
+            timing_1--;
+            if (timing_1 == 0) {
+                LED1 = !LED1;
+                err_1 = 1;
+            }
+        }
+        if (timing_2 > 0) {
+            timing_2--;
+            if (timing_2 == 0) {
+                LED1 = !LED1;
+                err_2 = 1;
+            }
+        }
+        if (timing_3 > 0) {
+            timing_3--;
+            if (timing_3 == 0) {
+                LED1 = !LED1;
+                err_3 = 1;
+            }
+        }
+        if(u5Timeout > 0) {
+            u5Timeout--;
+            if (u5Timeout == 0) {
+                LED1 = !LED1;
+//                xxx[0] = gprs_byte_count % 256;
+//                xxx[1] = gprs_byte_count / 256;
+                gprs_byte_count = 0;
+                flag_gprs = 1;
+            }
+        }
     }
     TIM_ClearITPendingBit(TIM2, TIM_IT_Update);  //清除中断标志位
 }

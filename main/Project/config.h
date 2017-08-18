@@ -30,7 +30,7 @@ u16 ups1[521] = {1};
 * ups2[518]~ups2[520]=====add[2301]~add[2303]
 */
 u16 ups2[521] = {0};
-u16 ele2[5] = {0};
+u16 ele2[7] = {0};
 u16 ele3[2] = {0};
 /*****16位CRC检验表，低位在前，高位在后*******/
 //////////////*高位表*///////////////////
@@ -96,11 +96,11 @@ u8 Send_buf[USART_SEND_NUM] = {0};         //发送数据数组（长度200）
 u8 flag_byte_count = 0;                    //PLC-HMI接收位数标识位
 u8 flag2_byte_count = 0;                   //设备-PLC接收位数标识位
 u8 scada_byte_count=0;                   //PLC-SCADA接收位数标识位
-u8 gprs_byte_count = 0;                    //PLC-GPRS接收位数标识位
+u16 gprs_byte_count = 0;                    //PLC-GPRS接收位数标识位
 u8 uart2_byte_count = 8;                   //设备对应串口接收端接收长度（USART2、USART3、USART6）
 u8 flag_hmi_send = 0;                      //HMI发送指令结束标志位
 u8 flag_scada_send = 0;                    //SCADA发送指令结束标志位
-u8 flag_gprs = 0;                          //gprs标志位
+u8 flag_gprs = 1;                          //gprs标志位
 u8 gprs_queue_ready = 0;                   //gprs发送队列载入完成标志位
 u8 flag_finish = 0;                        //设备数据传入结束标志位
 u16 flag_add = 1;                          //载入设备数据的地址
@@ -109,12 +109,13 @@ u16 flag_add = 1;                          //载入设备数据的地址
 u8 timing_1 = 0;                           //配电柜接收定时器
 u8 timing_2 = 0;                           //ups1接收定时器
 u8 timing_3 = 0;                           //ups2接收定时器
-
+u8 u5Timeout = 0;
 /*故障*/
-bool err_1 = false;                           //配电柜接收故障
-bool err_2 = false;                           //ups1接收故障
-bool err_3 = false;                           //ups2接收故障
+u16 err_1 = 0;                           //配电柜接收故障
+u16 err_2 = 0;                           //ups1接收故障
+u16 err_3 = 0;                           //ups2接收故障
 
+u8 xxx[2] = {0};
 
 
 /****************************************************/
@@ -127,16 +128,18 @@ bool err_3 = false;                           //ups2接收故障
 /************** load_qua: 载入数据个数 **************/
 /****************************************************/
 u8 location = 1;
+u8 loading = 0;
 u8 load_uart_num[] = {1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3};
 u8 load_func_code[] = {1, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
 u16 load_add[] = {0, 0, 0, 1, 81, 1901, 1001, 1101, 1173, 1501, 1573, 2301, 1, 81, 1901, 1001, 1101, 1173, 1501, 1573,
                   2301};
-u8 load_qua[] = {16, 40, 78, 55, 32, 84, 34, 72, 72, 72, 72, 3, 55, 32, 84, 34, 72, 72, 72, 72, 3};
+u8 load_qua[] = {16, 48, 78, 55, 32, 84, 34, 72, 72, 72, 72, 3, 55, 32, 84, 34, 72, 72, 72, 72, 3};
 
 u8 gprs_queue[21][USART_REC_NUM] = {0};
 u8 gprs_count[21] = {0};
 u8 gprs_location = 0;
 u8 gprs_queue_location = 0;
 
-u8 gprs_str_test[] = {0x73, 0x74, 0x72, 0x3D, 0x02, 0x03, 0x06, 0x00, 0x24, 0x01, 0x02, 0x01, 0x05, 0x00, 0x11};
+u8 gprs_str_test[] = {0x02, 0x03, 0x06, 0x00, 0x24, 0x01, 0x02, 0x01, 0x05, 0x00, 0x11};
+u8 str_str[] = {0x73, 0x74, 0x72, 0x3D};
 #endif
